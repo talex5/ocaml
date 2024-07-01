@@ -16,6 +16,8 @@
 /*                                                                        */
 /**************************************************************************/
 
+long slow_poll_threshold = 0;
+
 #define CAML_INTERNALS
 
 #define _GNU_SOURCE  /* For sched.h CPU_ZERO(3) and CPU_COUNT(3) */
@@ -206,6 +208,7 @@ static struct {
   atomic_uintnat barrier;
 
   caml_domain_state* participating[Max_domains];
+  struct timespec start_time;
 } stw_request = {
   ATOMIC_UINTNAT_INIT(0),
   ATOMIC_UINTNAT_INIT(0),
@@ -920,6 +923,12 @@ void caml_update_minor_heap_max(uintnat requested_wsz) {
 
 void caml_init_domains(uintnat minor_heap_wsz) {
   int i;
+  char *s = getenv("CAML_SLOW_INTR");
+  
+  if (s) {
+    slow_poll_threshold = atol(s);
+    printf("slow_poll_threshold = %ld ns\n", slow_poll_threshold);
+  }
 
   reserve_minor_heaps_from_stw_single();
   /* stw_single: mutators and domains have not started yet. */
@@ -1364,8 +1373,20 @@ static void decrement_stw_domains_still_processing(void)
   }
 }
 
+void __attribute__ ((noinline)) magic_trace_stop_indicator(long diff) {
+  fprintf(stderr, "stw_handler: took %ld us to notice stw request!\n", diff / 1000);
+}
+
 static void stw_handler(caml_domain_state* domain)
 {
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  long diff =
+    (now.tv_nsec - stw_request.start_time.tv_nsec) +
+    (now.tv_sec  - stw_request.start_time.tv_sec ) * 1000000000;
+  if (slow_poll_threshold && diff > slow_poll_threshold) {
+    magic_trace_stop_indicator(diff);
+  }
   CAML_EV_BEGIN(EV_STW_HANDLER);
   CAML_EV_BEGIN(EV_STW_API_BARRIER);
   {
@@ -1479,6 +1500,9 @@ int caml_try_run_on_all_domains_with_spin_work(
 {
   int i;
   caml_domain_state* domain_state = domain_self->state;
+  struct timespec now;
+
+  clock_gettime(CLOCK_MONOTONIC, &now);
 
   caml_gc_log("requesting STW, sync=%d", sync);
 
@@ -1511,10 +1535,12 @@ int caml_try_run_on_all_domains_with_spin_work(
 
   /* setup all fields for this stw_request, must have those needed
      for domains waiting at the enter spin barrier */
+
   stw_request.enter_spin_callback = enter_spin_callback;
   stw_request.enter_spin_data = enter_spin_data;
   stw_request.callback = handler;
   stw_request.data = data;
+  stw_request.start_time = now;
   atomic_store_release(&stw_request.barrier, 0);
   atomic_store_release(&stw_request.domains_still_running, sync);
   stw_request.num_domains = stw_domains.participating_domains;
