@@ -1515,11 +1515,7 @@ int caml_try_run_on_all_domains_with_spin_work(
      situations. Without this read, [stw_leader] would be protected by
      [all_domains_lock] and could be a non-atomic variable.
   */
-  if (atomic_load_acquire(&stw_leader) ||
-      !caml_plat_try_lock(&all_domains_lock)) {
-    caml_handle_incoming_interrupts();
-    return 0;
-  }
+  caml_plat_lock(&all_domains_lock);
 
   /* see if there is a stw_leader already */
   if (atomic_load_acquire(&stw_leader)) {
