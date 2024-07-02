@@ -1374,7 +1374,7 @@ static void decrement_stw_domains_still_processing(void)
 }
 
 void __attribute__ ((noinline)) magic_trace_stop_indicator(long diff) {
-  fprintf(stderr, "stw_handler: took %ld us to notice stw request!\n", diff / 1000);
+  fprintf(stderr, "stw_leader: took %ld us to send notifications!\n", diff / 1000);
 }
 
 static void stw_handler(caml_domain_state* domain)
@@ -1385,7 +1385,7 @@ static void stw_handler(caml_domain_state* domain)
     (now.tv_nsec - stw_request.start_time.tv_nsec) +
     (now.tv_sec  - stw_request.start_time.tv_sec ) * 1000000000;
   if (slow_poll_threshold && diff > slow_poll_threshold) {
-    magic_trace_stop_indicator(diff);
+    fprintf(stderr, "stw_handler: took %ld us to notice stw request!\n", diff / 1000);
   }
   CAML_EV_BEGIN(EV_STW_HANDLER);
   CAML_EV_BEGIN(EV_STW_API_BARRIER);
@@ -1501,6 +1501,7 @@ int caml_try_run_on_all_domains_with_spin_work(
   int i;
   caml_domain_state* domain_state = domain_self->state;
   struct timespec now;
+  struct timespec done;
 
   clock_gettime(CLOCK_MONOTONIC, &now);
 
@@ -1569,6 +1570,14 @@ int caml_try_run_on_all_domains_with_spin_work(
     stw_request.participating[i] = d->state;
     CAMLassert(!d->interruptor.interrupt_pending);
     if (d->state != domain_state) caml_send_interrupt(&d->interruptor);
+  }
+
+  clock_gettime(CLOCK_MONOTONIC, &done);
+  long diff =
+    (done.tv_nsec - now.tv_nsec) +
+    (done.tv_sec  - now.tv_sec ) * 1000000000;
+  if (slow_poll_threshold && diff > slow_poll_threshold) {
+    magic_trace_stop_indicator(diff);
   }
 
 
