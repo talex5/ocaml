@@ -68,6 +68,9 @@ type runtime_phase =
 | EV_STW_API_BARRIER
 | EV_STW_HANDLER
 | EV_STW_LEADER
+| EV_STW_TRY
+| EV_STW_SIGNAL
+| EV_SLEEP
 | EV_MAJOR_FINISH_SWEEPING
 | EV_MINOR_FINALIZERS_ADMIN
 | EV_MINOR_REMEMBERED_SET
@@ -151,7 +154,10 @@ let runtime_phase_name phase =
   | EV_MINOR_LEAVE_BARRIER -> "minor_leave_barrier"
   | EV_STW_API_BARRIER -> "stw_api_barrier"
   | EV_STW_HANDLER -> "stw_handler"
-  | EV_STW_LEADER -> "stw_leader"
+  | EV_STW_LEADER -> "leader"
+  | EV_STW_TRY -> "try"
+  | EV_STW_SIGNAL -> "signal"
+  | EV_SLEEP -> "sleep"
   | EV_MAJOR_FINISH_SWEEPING -> "major_finish_sweeping"
   | EV_MINOR_FINALIZERS_ADMIN -> "minor_finalizers_admin"
   | EV_MINOR_REMEMBERED_SET -> "minor_remembered_set"

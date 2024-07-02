@@ -355,6 +355,7 @@ void caml_handle_incoming_interrupts(void)
 
 int caml_send_interrupt(struct interruptor* target)
 {
+  CAML_EV_BEGIN(EV_STW_SIGNAL);
   /* signal that there is an interrupt pending */
   atomic_store_release(&target->interrupt_pending, 1);
 
@@ -365,6 +366,8 @@ int caml_send_interrupt(struct interruptor* target)
   caml_plat_unlock(&target->lock);
 
   interrupt_domain(target);
+
+  CAML_EV_END(EV_STW_SIGNAL);
 
   return 1;
 }
