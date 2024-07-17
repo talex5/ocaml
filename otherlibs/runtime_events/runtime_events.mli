@@ -487,14 +487,14 @@ Event indicating that a fork has occurred and the current domain is the child.
 *)
 | EV_DOMAIN_SPAWN
 (**
-Event indicating that a new domain has been spawned. Includes the PID of the
-new domain as an argument.
+Event indicating that a new domain has been spawned. Includes the TID of the
+new domain as an argument (since 5.3).
 @since 5.0
 *)
 | EV_DOMAIN_TERMINATE
 (**
-Event indicating that a domain has terminated. Includes the PID of the domain
-as an argument.
+Event indicating that a domain has terminated. Includes the TID of the domain
+as an argument (since 5.3).
 @since 5.0
 *)
 

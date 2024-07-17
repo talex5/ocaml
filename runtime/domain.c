@@ -1232,7 +1232,7 @@ static void* domain_thread_func(void* v)
 
     caml_gc_log("Domain starting (unique_id = %"ARCH_INTNAT_PRINTF_FORMAT"u)",
                 domain_self->interruptor.unique_id);
-    CAML_EV_LIFECYCLE(EV_DOMAIN_SPAWN, getpid());
+    CAML_EV_LIFECYCLE(EV_DOMAIN_SPAWN, gettid());
     /* FIXME: ignoring errors during domain initialization is unsafe
        and/or can deadlock. */
     caml_domain_initialize_hook();
@@ -2055,7 +2055,7 @@ static void domain_terminate (void)
       /* We must signal domain termination before releasing [all_domains_lock]:
          after that, this domain will no longer take part in STWs and emitting
          an event could race with runtime events teardown. */
-      CAML_EV_LIFECYCLE(EV_DOMAIN_TERMINATE, getpid());
+      CAML_EV_LIFECYCLE(EV_DOMAIN_TERMINATE, gettid());
     }
     caml_plat_unlock(&all_domains_lock);
   }
